@@ -9,6 +9,9 @@ import com.lyltc1.lindachu.di.AppContainer
 import com.lyltc1.lindachu.ui.detail.DetailScreen
 import com.lyltc1.lindachu.ui.detail.DetailViewModel
 import com.lyltc1.lindachu.ui.detail.DetailViewModelFactory
+import com.lyltc1.lindachu.ui.edit.EditScreen
+import com.lyltc1.lindachu.ui.edit.EditViewModel
+import com.lyltc1.lindachu.ui.edit.EditViewModelFactory
 import com.lyltc1.lindachu.ui.home.HomeScreen
 import com.lyltc1.lindachu.ui.home.HomeViewModel
 import com.lyltc1.lindachu.ui.home.HomeViewModelFactory
@@ -29,7 +32,8 @@ fun AppNav(container: AppContainer, appContext: Context) {
             )
             HomeScreen(
                 viewModel = homeViewModel,
-                onDishClick = { dishId -> navState.push(Screen.Detail(dishId)) }
+                onDishClick = { dishId -> navState.push(Screen.Detail(dishId)) },
+                onCreateClick = { navState.push(Screen.Edit(null)) }
             )
         }
 
@@ -40,10 +44,25 @@ fun AppNav(container: AppContainer, appContext: Context) {
             )
             DetailScreen(
                 viewModel = detailViewModel,
-                onBack = { navState.pop() }
+                onBack = { navState.pop() },
+                onEdit = { navState.push(Screen.Edit(screen.dishId)) }
             )
         }
 
-        is Screen.Edit -> Unit // M3 接入编辑页
+        is Screen.Edit -> {
+            val editViewModel: EditViewModel = viewModel(
+                key = "edit_${screen.dishId}",
+                factory = EditViewModelFactory(
+                    repository = container.dishRepository,
+                    imageStorage = container.imageStorage,
+                    dishId = screen.dishId
+                )
+            )
+            EditScreen(
+                viewModel = editViewModel,
+                onSaved = { navState.pop() },
+                onBack = { navState.pop() }
+            )
+        }
     }
 }

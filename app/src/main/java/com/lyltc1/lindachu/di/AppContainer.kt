@@ -3,6 +3,7 @@ package com.lyltc1.lindachu.di
 import android.content.Context
 import androidx.room.Room
 import com.lyltc1.lindachu.data.local.AppDatabase
+import com.lyltc1.lindachu.data.local.ImageStorage
 import com.lyltc1.lindachu.data.repository.DishRepository
 
 /**
@@ -20,6 +21,8 @@ class AppContainer(appContext: Context) {
     ).build()
 
     val dishRepository: DishRepository = DishRepository(database)
+
+    val imageStorage: ImageStorage = ImageStorage(appContext)
 
     companion object {
         const val DB_NAME = "lindachu.db"

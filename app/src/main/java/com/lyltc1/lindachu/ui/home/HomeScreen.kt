@@ -17,11 +17,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -46,11 +48,17 @@ import java.io.File
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onDishClick: (String) -> Unit = {}
+    onDishClick: (String) -> Unit = {},
+    onCreateClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = onCreateClick) {
+                Icon(Icons.Default.Add, contentDescription = "新建菜谱")
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text("林大厨") },
