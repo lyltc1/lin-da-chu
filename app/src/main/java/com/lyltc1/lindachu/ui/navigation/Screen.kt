@@ -6,4 +6,8 @@ sealed interface Screen {
     data class Detail(val dishId: String) : Screen
     data class Edit(val dishId: String?) : Screen
     data object Settings : Screen
+    data object MenuList : Screen
+    data class MenuDetail(val menuId: String?) : Screen
+    data object Orders : Screen
+    data object ScanOrder : Screen
 }

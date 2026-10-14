@@ -22,8 +22,8 @@ class SyncException(message: String, cause: Throwable? = null) : Exception(messa
  */
 class GitHubContentClient(
     private val token: String,
-    private val owner: String,
-    private val repo: String
+    val owner: String,
+    val repo: String
 ) {
 
     data class RemoteFile(val content: String, val sha: String?)

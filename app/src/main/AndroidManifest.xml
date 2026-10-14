@@ -4,6 +4,12 @@
     <!-- M5 起通过 GitHub API 同步菜谱数据需要联网 -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- M6 扫码接单需要相机；不做强制要求，无相机设备仍可使用其余功能 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
     <application
         android:name=".LinDaChuApp"
         android:allowBackup="true"

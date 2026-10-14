@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,7 +53,8 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onDishClick: (String) -> Unit = {},
     onCreateClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onMenusClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -66,6 +68,7 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("林大厨") },
                 actions = {
+                    TextButton(onClick = onMenusClick) { Text("菜单") }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }

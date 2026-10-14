@@ -5,8 +5,10 @@ import androidx.room.Room
 import com.lyltc1.lindachu.data.backup.BackupManager
 import com.lyltc1.lindachu.data.local.AppDatabase
 import com.lyltc1.lindachu.data.local.ImageStorage
+import com.lyltc1.lindachu.data.menu.MenuPublisher
 import com.lyltc1.lindachu.data.prefs.SyncPreferences
 import com.lyltc1.lindachu.data.repository.DishRepository
+import com.lyltc1.lindachu.data.repository.MenuRepository
 import com.lyltc1.lindachu.data.sync.SyncManager
 
 /**
@@ -21,7 +23,7 @@ class AppContainer(appContext: Context) {
         appContext,
         AppDatabase::class.java,
         DB_NAME
-    ).build()
+    ).addMigrations(AppDatabase.MIGRATION_1_2).build()
 
     val dishRepository: DishRepository = DishRepository(database)
 
@@ -32,6 +34,10 @@ class AppContainer(appContext: Context) {
     val syncManager: SyncManager = SyncManager(database, imageStorage, syncPreferences)
 
     val backupManager: BackupManager = BackupManager(appContext, imageStorage)
+
+    val menuRepository: MenuRepository = MenuRepository(database)
+
+    val menuPublisher: MenuPublisher = MenuPublisher(appContext, menuRepository, syncPreferences)
 
     companion object {
         const val DB_NAME = "lindachu.db"

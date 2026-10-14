@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>林大厨菜单</title>
+<style>
+:root{--primary:#FF7043;--bg:#FFF8F3;--card:#fff;--text:#2B2320;--muted:#8A7A72;--line:#F0E2D8}
+*{box-sizing:border-box}
+body{margin:0;padding:0 0 132px;background:var(--bg);color:var(--text);
+font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+header{padding:28px 20px 18px;background:var(--primary);color:#fff}
+header h1{margin:0;font-size:24px}
+header p{margin:8px 0 0;font-size:14px;opacity:.92}
+.hint{padding:14px 16px 0;font-size:13px;color:var(--muted)}
+.grid{display:grid;gap:12px;padding:16px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.dish{position:relative;background:var(--card);border-radius:16px;overflow:hidden;
+box-shadow:0 2px 10px rgba(0,0,0,.05);cursor:pointer;transition:transform .12s;
+-webkit-tap-highlight-color:transparent}
+.dish:active{transform:scale(.97)}
+.dish.picked{outline:2.5px solid var(--primary)}
+.dish img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--line)}
+.body{padding:10px 12px 12px}
+.body h2{margin:0 0 6px;font-size:16px}
+.meta{font-size:12px;color:var(--muted)}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;
+background:#FFF0E8;color:var(--primary);margin:6px 4px 0 0}
+.badge{position:absolute;right:8px;top:8px;background:var(--primary);color:#fff;
+border-radius:999px;min-width:28px;height:28px;display:flex;align-items:center;
+justify-content:center;font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);
+padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.fields{display:flex;gap:8px;margin-bottom:10px}
+input{flex:1;min-width:0;font-size:15px;padding:10px 12px;border:1px solid var(--line);
+border-radius:10px;background:#fff;color:var(--text)}
+button{font-family:inherit}
+.primary{width:100%;background:var(--primary);color:#fff;border:0;border-radius:12px;
+padding:14px;font-size:16px;font-weight:600}
+.primary:disabled{opacity:.45}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;
+justify-content:center;padding:24px;z-index:10}
+.modal.hidden{display:none}
+.sheet{background:#fff;border-radius:20px;padding:20px;width:100%;max-width:340px;text-align:center}
+#qr{display:flex;justify-content:center;align-items:center;margin:14px 0;min-height:240px}
+#qr svg,#qr img{width:240px;height:240px;image-rendering:pixelated}
+.code{font-size:12px;color:var(--muted);word-break:break-all;background:#FAF3EE;
+padding:10px;border-radius:10px;text-align:left;line-height:1.5}
+.ghost{margin-top:10px;background:var(--line);border:0;border-radius:12px;padding:12px;
+width:100%;font-size:15px}
+.empty{padding:60px 20px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">林大厨菜单</h1>
+  <p id="greeting"></p>
+</header>
+<p class="hint">点菜名即可加减，最多 9 份</p>
+<main class="grid" id="list"></main>
+
+<div class="bar">
+  <div class="fields">
+    <input id="table" placeholder="桌号 / 称呼" maxlength="20">
+    <input id="note" placeholder="备注（忌口等）" maxlength="60">
+  </div>
+  <button class="primary" id="submit" disabled>生成订单</button>
+</div>
+
+<div class="modal hidden" id="modal">
+  <div class="sheet">
+    <h3 style="margin:0; font-size:18px">把订单码给大厨扫</h3>
+    <div id="qr"></div>
+    <div class="code" id="code"></div>
+    <button class="ghost" id="copy">复制订单文本</button>
+    <button class="ghost" id="close">关闭</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+var MENU = __MENU_DATA__;
+var MAX_PER_DISH = 9;
+var picks = {};
+
+var tableEl = document.getElementById('table');
+var noteEl = document.getElementById('note');
+var submitEl = document.getElementById('submit');
+var modalEl = document.getElementById('modal');
+var qrEl = document.getElementById('qr');
+var codeEl = document.getElementById('code');
+var copyEl = document.getElementById('copy');
+var listEl = document.getElementById('list');
+
+document.getElementById('title').textContent = MENU.title || '林大厨菜单';
+document.getElementById('greeting').textContent = MENU.greeting || '';
+document.title = MENU.title || '林大厨菜单';
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function order(keys) {
+  return keys.map(Number).sort(function (a, b) { return a - b; });
+}
+
+function render() {
+  if (!MENU.dishes.length) {
+    listEl.innerHTML = '<div class="empty">菜单里还没有菜</div>';
+    submitEl.disabled = true;
+    return;
+  }
+  listEl.innerHTML = MENU.dishes.map(function (dish, index) {
+    var count = picks[index] || 0;
+    var cover = dish.cover
+      ? '<img src="../../' + esc(dish.cover) + '" alt="' + esc(dish.title) + '" loading="lazy">'
+      : '<div style="aspect-ratio:4/3;background:#F0E2D8"></div>';
+    var tags = String(dish.tags || '').split(',').filter(Boolean)
+      .map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
+    return '<div class="dish' + (count > 0 ? ' picked' : '') + '" data-index="' + index + '">' +
+      (count > 0 ? '<div class="badge">' + count + '</div>' : '') +
+      cover +
+      '<div class="body"><h2>' + esc(dish.title) + '</h2>' +
+      '<div class="meta">难度 ' + dish.difficulty + ' · ' + dish.durationMin + ' 分钟 · ' + dish.servings + ' 人份</div>' +
+      (dish.desc ? '<div class="meta" style="margin-top:6px">' + esc(dish.desc) + '</div>' : '') +
+      '<div>' + tags + '</div></div></div>';
+  }).join('');
+
+  var keys = Object.keys(picks);
+  submitEl.disabled = keys.length === 0;
+}
+
+listEl.addEventListener('click', function (e) {
+  var card = e.target.closest ? e.target.closest('.dish') : null;
+  if (!card) return;
+  var index = card.getAttribute('data-index');
+  var current = picks[index] || 0;
+  var next = current >= MAX_PER_DISH ? 0 : current + 1;
+  if (next === 0) delete picks[index]; else picks[index] = next;
+  render();
+});
+
+function sanitize(v) {
+  return String(v || '').replace(/[|,:\n]/g, ' ').trim();
+}
+
+function buildCode() {
+  var items = order(Object.keys(picks))
+    .map(function (i) { return i + ':' + picks[i]; })
+    .join(',');
+  return ['LC1', MENU.menuId, sanitize(tableEl.value), sanitize(noteEl.value), items].join('|');
+}
+
+function showQr(text) {
+  qrEl.innerHTML = '';
+  if (typeof qrcode === 'function') {
+    try {
+      var qr = qrcode(0, 'M');
+      qr.addData(text);
+      qr.make();
+      qrEl.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2 });
+      return;
+    } catch (err) {
+      /* 落到下面的提示 */
+    }
+  }
+  qrEl.innerHTML = '<div style="font-size:13px;color:#8A7A72;line-height:1.6">' +
+    '二维码库需要联网加载。<br>可以直接复制下方文本发给大厨。</div>';
+}
+
+submitEl.addEventListener('click', function () {
+  var code = buildCode();
+  codeEl.textContent = code;
+  showQr(code);
+  modalEl.classList.remove('hidden');
+});
+
+document.getElementById('close').addEventListener('click', function () {
+  modalEl.classList.add('hidden');
+});
+
+copyEl.addEventListener('click', function () {
+  var text = codeEl.textContent;
+  var done = function (ok) {
+    copyEl.textContent = ok ? '已复制' : '请长按上方文本手动复制';
+    setTimeout(function () { copyEl.textContent = '复制订单文本'; }, 2000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+  } else {
+    done(false);
+  }
+});
+
+render();
+</script>
+</body>
+</html>
