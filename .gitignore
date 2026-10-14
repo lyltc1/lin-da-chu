@@ -1,0 +1,34 @@
+# Gradle
+.gradle/
+build/
+captures/
+.cxx/
+.kotlin/
+local.properties
+
+# IDE
+*.iml
+.idea/
+.navigation/
+
+# Build output
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+
+# Keystore (never commit signing keys)
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# User recipe data (synced to a separate private repo, never here)
+/data/
