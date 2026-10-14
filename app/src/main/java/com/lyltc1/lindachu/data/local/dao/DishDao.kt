@@ -55,6 +55,13 @@ interface DishDao {
     @Query("DELETE FROM dish WHERE deletedAt IS NOT NULL AND deletedAt < :before")
     suspend fun purgeDeleted(before: Long)
 
+    /** 全量数据（含已删除），同步时需要把墓碑一并推送 */
+    @Query("SELECT * FROM dish")
+    suspend fun getAllForSync(): List<DishEntity>
+
+    @Query("SELECT * FROM dish WHERE id = :id")
+    suspend fun getById(id: String): DishEntity?
+
     @Query("SELECT COUNT(*) FROM dish WHERE deletedAt IS NULL")
     suspend fun countActive(): Int
 }

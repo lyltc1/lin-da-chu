@@ -37,6 +37,16 @@ class ImageStorage(private val context: Context) {
         target.relativeTo(context.filesDir).path
     }
 
+    /** 把同步下载回来的图片按原始相对路径写入私有目录 */
+    fun saveRaw(relativePath: String, bytes: ByteArray) {
+        val target = File(context.filesDir, relativePath)
+        target.parentFile?.mkdirs()
+        target.writeBytes(bytes)
+    }
+
+    /** 私有目录下 images/ 的根目录，供备份导出遍历 */
+    fun imagesRoot(): File = File(context.filesDir, DIR_IMAGES)
+
     /** 删除某道菜的全部图片，删除菜谱时调用 */
     fun deleteDishImages(dishId: String) {
         File(context.filesDir, DIR_IMAGES).resolve(dishId).deleteRecursively()

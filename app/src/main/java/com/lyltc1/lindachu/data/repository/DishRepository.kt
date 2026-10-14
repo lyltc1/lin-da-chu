@@ -1,7 +1,9 @@
 package com.lyltc1.lindachu.data.repository
 
 import androidx.room.withTransaction
+import com.lyltc1.lindachu.data.backup.BackupManager
 import com.lyltc1.lindachu.data.local.AppDatabase
+import com.lyltc1.lindachu.data.sync.SyncRecipe
 import com.lyltc1.lindachu.data.local.entity.CategoryEntity
 import com.lyltc1.lindachu.data.local.entity.DishEntity
 import com.lyltc1.lindachu.data.local.entity.DishWithDetails
@@ -64,6 +66,41 @@ class DishRepository(private val db: AppDatabase) {
     /** 清理超过保留期的墓碑，默认保留 90 天 */
     suspend fun purgeDeleted(keepMillis: Long = 90L * 24 * 60 * 60 * 1000) {
         dishDao.purgeDeleted(System.currentTimeMillis() - keepMillis)
+    }
+
+    /** 打包全部数据用于备份导出 */
+    suspend fun exportPayload(): BackupManager.Payload {
+        val dishes = dishDao.getAllForSync()
+        val recipes = dishes.map { dish ->
+            SyncRecipe(
+                dish = dish,
+                ingredients = ingredientDao.getByDish(dish.id),
+                steps = stepDao.getByDish(dish.id)
+            )
+        }
+        return BackupManager.Payload(
+            categories = categoryDao.getAll(),
+            recipes = recipes
+        )
+    }
+
+    /**
+     * 从备份恢复。
+     *
+     * 备份恢复属于"整体回滚"语义，直接按备份内容覆盖本地，
+     * 不走增量合并，符合用户"回到某个时刻"的预期。
+     */
+    suspend fun restore(payload: BackupManager.Payload) {
+        db.withTransaction {
+            payload.categories.forEach { categoryDao.upsert(it) }
+            payload.recipes.forEach { recipe ->
+                dishDao.upsert(recipe.dish)
+                ingredientDao.deleteByDish(recipe.dish.id)
+                ingredientDao.upsertAll(recipe.ingredients)
+                stepDao.deleteByDish(recipe.dish.id)
+                stepDao.upsertAll(recipe.steps)
+            }
+        }
     }
 
     suspend fun ensureSeeded() {

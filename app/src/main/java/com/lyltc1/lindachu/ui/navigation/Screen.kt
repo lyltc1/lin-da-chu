@@ -5,4 +5,5 @@ sealed interface Screen {
     data object Home : Screen
     data class Detail(val dishId: String) : Screen
     data class Edit(val dishId: String?) : Screen
+    data object Settings : Screen
 }

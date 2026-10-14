@@ -2,9 +2,12 @@ package com.lyltc1.lindachu.di
 
 import android.content.Context
 import androidx.room.Room
+import com.lyltc1.lindachu.data.backup.BackupManager
 import com.lyltc1.lindachu.data.local.AppDatabase
 import com.lyltc1.lindachu.data.local.ImageStorage
+import com.lyltc1.lindachu.data.prefs.SyncPreferences
 import com.lyltc1.lindachu.data.repository.DishRepository
+import com.lyltc1.lindachu.data.sync.SyncManager
 
 /**
  * 手动依赖装配。
@@ -23,6 +26,12 @@ class AppContainer(appContext: Context) {
     val dishRepository: DishRepository = DishRepository(database)
 
     val imageStorage: ImageStorage = ImageStorage(appContext)
+
+    val syncPreferences: SyncPreferences = SyncPreferences(appContext)
+
+    val syncManager: SyncManager = SyncManager(database, imageStorage, syncPreferences)
+
+    val backupManager: BackupManager = BackupManager(appContext, imageStorage)
 
     companion object {
         const val DB_NAME = "lindachu.db"

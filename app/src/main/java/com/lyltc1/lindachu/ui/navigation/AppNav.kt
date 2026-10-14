@@ -15,6 +15,9 @@ import com.lyltc1.lindachu.ui.edit.EditViewModelFactory
 import com.lyltc1.lindachu.ui.home.HomeScreen
 import com.lyltc1.lindachu.ui.home.HomeViewModel
 import com.lyltc1.lindachu.ui.home.HomeViewModelFactory
+import com.lyltc1.lindachu.ui.settings.SettingsScreen
+import com.lyltc1.lindachu.ui.settings.SettingsViewModel
+import com.lyltc1.lindachu.ui.settings.SettingsViewModelFactory
 
 /** 页面容器：按返回栈渲染当前页面，并处理系统返回键 */
 @Composable
@@ -33,7 +36,8 @@ fun AppNav(container: AppContainer, appContext: Context) {
             HomeScreen(
                 viewModel = homeViewModel,
                 onDishClick = { dishId -> navState.push(Screen.Detail(dishId)) },
-                onCreateClick = { navState.push(Screen.Edit(null)) }
+                onCreateClick = { navState.push(Screen.Edit(null)) },
+                onSettingsClick = { navState.push(Screen.Settings) }
             )
         }
 
@@ -61,6 +65,21 @@ fun AppNav(container: AppContainer, appContext: Context) {
             EditScreen(
                 viewModel = editViewModel,
                 onSaved = { navState.pop() },
+                onBack = { navState.pop() }
+            )
+        }
+
+        Screen.Settings -> {
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModelFactory(
+                    repository = container.dishRepository,
+                    syncManager = container.syncManager,
+                    backupManager = container.backupManager,
+                    preferences = container.syncPreferences
+                )
+            )
+            SettingsScreen(
+                viewModel = settingsViewModel,
                 onBack = { navState.pop() }
             )
         }
