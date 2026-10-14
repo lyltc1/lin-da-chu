@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.lyltc1.lindachu.data.local.entity.DishEntity
+import com.lyltc1.lindachu.util.difficultyLabel
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -177,10 +178,3 @@ private fun DishCard(
     }
 }
 
-private fun difficultyLabel(level: Int): String = when (level) {
-    1 -> "简单"
-    2 -> "适中"
-    3 -> "进阶"
-    4, 5 -> "困难"
-    else -> "适中"
-}
