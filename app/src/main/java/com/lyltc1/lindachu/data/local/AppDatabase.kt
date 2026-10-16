@@ -31,7 +31,7 @@ import com.lyltc1.lindachu.data.local.entity.StepEntity
         OrderEntity::class,
         OrderItemEntity::class
     ],
-    version = 2,
+    version = 6,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -72,6 +72,66 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_order_item_orderId` ON `order_item` (`orderId`)"
                 )
+            }
+        }
+
+        /** v3：步骤新增小结字段，纯增量，已有步骤默认留空（只展示正文） */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `step` ADD COLUMN `summary` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** v4：菜谱新增评价字段，与"小贴士"分开，旧数据评价留空 */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `dish` ADD COLUMN `review` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** v5：菜谱新增别名字段，让"炒包菜"这类叫法也能搜到"手撕莲白" */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `dish` ADD COLUMN `aliases` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * v6：菜谱去掉难度与份量两列。
+         *
+         * 不少设备的 SQLite 还不支持 DROP COLUMN，所以走重建表的路子：
+         * 建新表 → 搬运要保留的列 → 删旧表 → 改名 → 补回索引。
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `dish_new` (" +
+                        "`id` TEXT NOT NULL, `title` TEXT NOT NULL, `coverPath` TEXT, " +
+                        "`categoryId` TEXT, `tags` TEXT NOT NULL, `aliases` TEXT NOT NULL, " +
+                        "`durationMin` INTEGER NOT NULL, `notes` TEXT NOT NULL, " +
+                        "`review` TEXT NOT NULL, `rating` INTEGER NOT NULL, " +
+                        "`cookCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                        "`updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "INSERT INTO `dish_new` (" +
+                        "`id`, `title`, `coverPath`, `categoryId`, `tags`, `aliases`, " +
+                        "`durationMin`, `notes`, `review`, `rating`, `cookCount`, " +
+                        "`createdAt`, `updatedAt`, `deletedAt`) " +
+                        "SELECT " +
+                        "`id`, `title`, `coverPath`, `categoryId`, `tags`, `aliases`, " +
+                        "`durationMin`, `notes`, `review`, `rating`, `cookCount`, " +
+                        "`createdAt`, `updatedAt`, `deletedAt` FROM `dish`"
+                )
+                db.execSQL("DROP TABLE `dish`")
+                db.execSQL("ALTER TABLE `dish_new` RENAME TO `dish`")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_dish_categoryId` ON `dish` (`categoryId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_dish_updatedAt` ON `dish` (`updatedAt`)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_dish_title` ON `dish` (`title`)")
             }
         }
     }

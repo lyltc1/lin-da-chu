@@ -6,8 +6,6 @@ import com.lyltc1.lindachu.data.local.entity.DishEntity
 import com.lyltc1.lindachu.data.local.entity.MenuEntity
 import com.lyltc1.lindachu.data.local.entity.OrderEntity
 import com.lyltc1.lindachu.data.local.entity.OrderItemEntity
-import com.lyltc1.lindachu.data.local.entity.OrderStatus
-import com.lyltc1.lindachu.data.order.OrderCodec
 import com.lyltc1.lindachu.util.encodeStringList
 import com.lyltc1.lindachu.util.parseStringList
 import kotlinx.coroutines.flow.Flow
@@ -67,39 +65,53 @@ class MenuRepository(private val db: AppDatabase) {
             .mapNotNull { dishDao.getById(it) }
             .filter { it.deletedAt == null }
 
+    /** 分类 id → 名称，点菜页按分类建索引时用 */
+    suspend fun getCategoryNames(): Map<String, String> =
+        db.categoryDao().getAll().associate { it.id to it.name }
+
     fun observeOrders(): Flow<List<OrderWithItems>> =
         combine(orderDao.observeAll(), orderDao.observeAllItems()) { orders, items ->
             val grouped = items.groupBy { it.orderId }
             orders.map { OrderWithItems(it, grouped[it.id].orEmpty()) }
         }
 
-    /** 把扫码得到的订单码落库 */
-    suspend fun receiveOrder(payload: OrderCodec.Payload): Result<OrderEntity> {
-        val menu = menuDao.getById(payload.menuId)
-            ?: return Result.failure(IllegalArgumentException("本机没有这份菜单，请先发布菜单再接单"))
-        val dishIds = parseStringList(menu.dishIds)
+    /**
+     * 本机下单：大家在这台手机上点完菜，直接落库成一份点单。
+     *
+     * 不经过 GitHub，也不需要扫码。菜品按菜单里的顺序保存，
+     * 汇总页排版成截图就能发出去的样子。
+     */
+    suspend fun createLocalOrder(
+        menuId: String,
+        note: String,
+        counts: Map<String, Int>
+    ): Result<OrderEntity> {
+        val menu = menuDao.getById(menuId)
+            ?: return Result.failure(IllegalArgumentException("这份菜单已经不存在了"))
         val orderId = "o-${UUID.randomUUID().toString().take(8)}"
 
-        val items = payload.picks.mapNotNull { pick ->
-            val dish = dishIds.getOrNull(pick.index)?.let { dishDao.getById(it) }
-                ?: return@mapNotNull null
+        val items = parseStringList(menu.dishIds).mapNotNull { dishId ->
+            val count = counts[dishId] ?: 0
+            val dish = dishDao.getById(dishId) ?: return@mapNotNull null
+            if (count <= 0) return@mapNotNull null
             OrderItemEntity(
                 id = UUID.randomUUID().toString(),
                 orderId = orderId,
                 dishId = dish.id,
                 dishTitle = dish.title,
-                count = pick.count.coerceIn(1, 99)
+                count = count.coerceIn(1, 99)
             )
         }
-        if (items.isEmpty()) return Result.failure(IllegalArgumentException("订单里没有有效菜品"))
+        if (items.isEmpty()) {
+            return Result.failure(IllegalStateException("还没点菜呢，先选几道吧"))
+        }
 
         val now = System.currentTimeMillis()
         val order = OrderEntity(
             id = orderId,
             menuId = menu.id,
             menuTitle = menu.title,
-            tableNo = payload.tableNo,
-            note = payload.note,
+            note = note.trim(),
             createdAt = now,
             updatedAt = now
         )
@@ -110,9 +122,12 @@ class MenuRepository(private val db: AppDatabase) {
         return Result.success(order)
     }
 
-    suspend fun updateOrderStatus(id: String, status: OrderStatus) {
-        orderDao.updateStatus(id, status.code, System.currentTimeMillis())
-    }
+    /** 单份点单及其菜品，汇总页用 */
+    fun observeOrder(id: String): Flow<OrderWithItems?> =
+        combine(orderDao.observeAll(), orderDao.observeAllItems()) { orders, items ->
+            val order = orders.firstOrNull { it.id == id } ?: return@combine null
+            OrderWithItems(order, items.filter { it.orderId == id })
+        }
 
     suspend fun deleteOrder(id: String) {
         db.withTransaction {

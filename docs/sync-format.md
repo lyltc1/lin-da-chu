@@ -1,6 +1,6 @@
 # 同步数据格式规范
 
-林大厨把 GitHub 仓库当作数据后端：菜谱以 JSON 文本存储、图片以文件存储，
+大厨手记把 GitHub 仓库当作数据后端：菜谱以 JSON 文本存储、图片以文件存储，
 App 通过 GitHub Contents API 读写。本文是 App 与数据仓库 `lyltc1/lin-da-chu-data` 之间的契约。
 
 代码位置：`data/sync/SyncModels.kt`（编解码）、`data/sync/SyncManager.kt`（同步流程）。

@@ -159,33 +159,31 @@ private fun BasicInfoSection(uiState: EditUiState, viewModel: EditViewModel) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Text("难度", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(1 to "简单", 2 to "适中", 3 to "进阶", 4 to "困难").forEach { (level, label) ->
-                    FilterChip(
-                        selected = uiState.difficulty == level,
-                        onClick = { viewModel.onDifficultyChanged(level) },
-                        label = { Text(label) }
-                    )
-                }
-            }
+            OutlinedTextField(
+                value = uiState.aliases,
+                onValueChange = viewModel::onAliasesChanged,
+                label = { Text("别名（逗号分隔）") },
+                placeholder = { Text("如：手撕包菜,炒包菜") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = uiState.durationMin,
-                    onValueChange = viewModel::onDurationChanged,
-                    label = { Text("耗时/分钟") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = uiState.servings,
-                    onValueChange = viewModel::onServingsChanged,
-                    label = { Text("份量/人") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            OutlinedTextField(
+                value = uiState.durationMin,
+                onValueChange = viewModel::onDurationChanged,
+                label = { Text("耗时/分钟") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = uiState.review,
+                onValueChange = viewModel::onReviewChanged,
+                label = { Text("评价") },
+                placeholder = { Text("如：简单清爽，色泽翠绿") },
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             OutlinedTextField(
                 value = uiState.notes,
@@ -354,6 +352,15 @@ private fun StepEditorCard(
             }
 
             OutlinedTextField(
+                value = step.summary,
+                onValueChange = { onChange(step.copy(summary = it)) },
+                label = { Text("小结（可选）") },
+                placeholder = { Text("如：择菜、洗菜、热油") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
                 value = step.text,
                 onValueChange = { onChange(step.copy(text = it)) },
                 label = { Text("这一步做什么") },
@@ -385,26 +392,13 @@ private fun StepEditorCard(
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AssistChip(
-                    onClick = onPickImage,
-                    label = { Text("添加图片") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                    }
-                )
-                Spacer8()
-                OutlinedTextField(
-                    value = step.timerSec?.toString().orEmpty(),
-                    onValueChange = { input ->
-                        val value = input.filter { it.isDigit() }
-                        onChange(step.copy(timerSec = value.toIntOrNull()))
-                    },
-                    label = { Text("计时/分钟") },
-                    singleLine = true,
-                    modifier = Modifier.width(120.dp)
-                )
-            }
+            AssistChip(
+                onClick = onPickImage,
+                label = { Text("添加图片") },
+                leadingIcon = {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                }
+            )
         }
     }
 }

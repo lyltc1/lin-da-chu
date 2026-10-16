@@ -34,21 +34,23 @@ data class EditableIngredient(
 data class EditableStep(
     val id: String = UUID.randomUUID().toString(),
     val text: String = "",
-    val imagePaths: List<String> = emptyList(),
-    val timerSec: Int? = null
+    /** 步骤小结，如 "择菜""热油"，用作详情页一眼扫读的小标题；留空则只展示正文 */
+    val summary: String = "",
+    val imagePaths: List<String> = emptyList()
 )
 
 data class EditUiState(
     val isNew: Boolean = true,
     val dishId: String = "",
+    val coverPath: String? = null,
     val title: String = "",
     val categoryId: String? = null,
     val categories: List<CategoryEntity> = emptyList(),
     val tags: String = "",
-    val difficulty: Int = 2,
+    val aliases: String = "",
     val durationMin: String = "",
-    val servings: String = "2",
     val notes: String = "",
+    val review: String = "",
     val ingredients: List<EditableIngredient> = listOf(EditableIngredient()),
     val steps: List<EditableStep> = listOf(EditableStep()),
     val isSaving: Boolean = false,
@@ -95,17 +97,25 @@ class EditViewModel(
                 _uiState.update { state ->
                     state.copy(
                         title = details.dish.title,
+                        coverPath = details.dish.coverPath,
                         categoryId = details.dish.categoryId,
                         tags = details.dish.tags,
-                        difficulty = details.dish.difficulty,
+                        aliases = details.dish.aliases,
                         durationMin = details.dish.durationMin.takeIf { it > 0 }?.toString().orEmpty(),
-                        servings = details.dish.servings.takeIf { it > 0 }?.toString().orEmpty(),
                         notes = details.dish.notes,
+                        review = details.dish.review,
                         ingredients = details.ingredients
                             .map { EditableIngredient(it.id, it.name, it.amount, it.unit, it.groupName) }
                             .ifEmpty { listOf(EditableIngredient()) },
                         steps = details.steps
-                            .map { EditableStep(it.id, it.text, parseStringList(it.imagePaths), it.timerSec) }
+                            .map {
+                                EditableStep(
+                                    id = it.id,
+                                    text = it.text,
+                                    summary = it.summary,
+                                    imagePaths = parseStringList(it.imagePaths)
+                                )
+                            }
                             .ifEmpty { listOf(EditableStep()) }
                     )
                 }
@@ -115,10 +125,10 @@ class EditViewModel(
 
     fun onTitleChanged(value: String) = _uiState.update { it.copy(title = value, errorMessage = null) }
     fun onTagsChanged(value: String) = _uiState.update { it.copy(tags = value) }
+    fun onAliasesChanged(value: String) = _uiState.update { it.copy(aliases = value) }
     fun onNotesChanged(value: String) = _uiState.update { it.copy(notes = value) }
+    fun onReviewChanged(value: String) = _uiState.update { it.copy(review = value) }
     fun onDurationChanged(value: String) = _uiState.update { it.copy(durationMin = value.filter { it.isDigit() }) }
-    fun onServingsChanged(value: String) = _uiState.update { it.copy(servings = value.filter { it.isDigit() }) }
-    fun onDifficultyChanged(value: Int) = _uiState.update { it.copy(difficulty = value) }
     fun onCategoryChanged(value: String?) = _uiState.update { it.copy(categoryId = value) }
 
     fun addIngredient() =
@@ -220,23 +230,25 @@ class EditViewModel(
                         id = item.id,
                         dishId = state.dishId,
                         orderIndex = index,
+                        summary = item.summary.trim(),
                         text = item.text.trim(),
-                        imagePaths = encodeStringList(item.imagePaths),
-                        timerSec = item.timerSec?.takeIf { it > 0 }
+                        imagePaths = encodeStringList(item.imagePaths)
                     )
                 }
 
             val dish = DishEntity(
                 id = state.dishId,
                 title = title,
+                // 没有步骤图时沿用原封面，避免内置示例图的封面被清空
                 coverPath = keptSteps.firstOrNull { it.imagePaths != "[]" }
-                    ?.let { parseStringList(it.imagePaths).firstOrNull() },
+                    ?.let { parseStringList(it.imagePaths).firstOrNull() }
+                    ?: state.coverPath,
                 categoryId = state.categoryId,
                 tags = state.tags.trim(),
-                difficulty = state.difficulty,
+                aliases = state.aliases.trim(),
                 durationMin = state.durationMin.toIntOrNull() ?: 0,
-                servings = state.servings.toIntOrNull() ?: 0,
                 notes = state.notes.trim(),
+                review = state.review.trim(),
                 createdAt = originalCreatedAt ?: now,
                 updatedAt = now
             )

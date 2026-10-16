@@ -25,7 +25,7 @@ interface DishDao {
     fun observeWithDetails(id: String): Flow<DishWithDetails?>
 
     /**
-     * 全字段模糊搜索：菜名、标签、备注、食材名、步骤正文。
+     * 全字段模糊搜索：菜名、别名、标签、备注、食材名、步骤正文。
      * 个人菜谱量级在数百条以内，LIKE 足够且对中文准确，无需引入分词方案。
      */
     @Query(
@@ -34,6 +34,7 @@ interface DishDao {
             "LEFT JOIN step ON step.dishId = dish.id " +
             "WHERE dish.deletedAt IS NULL AND (" +
             "dish.title LIKE '%' || :query || '%' " +
+            "OR dish.aliases LIKE '%' || :query || '%' " +
             "OR dish.tags LIKE '%' || :query || '%' " +
             "OR dish.notes LIKE '%' || :query || '%' " +
             "OR ingredient.name LIKE '%' || :query || '%' " +
@@ -61,6 +62,10 @@ interface DishDao {
 
     @Query("SELECT * FROM dish WHERE id = :id")
     suspend fun getById(id: String): DishEntity?
+
+    /** 硬删除，仅用于清理内置示例数据：这些条目不应留墓碑参与同步 */
+    @Query("DELETE FROM dish WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
 
     @Query("SELECT COUNT(*) FROM dish WHERE deletedAt IS NULL")
     suspend fun countActive(): Int

@@ -85,10 +85,10 @@ fun SyncRecipe.toJson(): String {
         .put("id", dish.id)
         .put("title", dish.title)
         .put("tags", dish.tags)
-        .put("difficulty", dish.difficulty)
         .put("durationMin", dish.durationMin)
-        .put("servings", dish.servings)
         .put("notes", dish.notes)
+        .put("review", dish.review)
+        .put("aliases", dish.aliases)
         .put("rating", dish.rating)
         .put("cookCount", dish.cookCount)
         .put("createdAt", dish.createdAt)
@@ -112,7 +112,9 @@ fun SyncRecipe.toJson(): String {
 
     json.put("steps", JSONArray().apply {
         steps.forEach { step ->
-            val stepJson = JSONObject().put("text", step.text)
+            val stepJson = JSONObject()
+                .put("text", step.text)
+                .put("summary", step.summary)
             stepJson.put("images", JSONArray().apply {
                 parseStringList(step.imagePaths).forEach { put(it) }
             })
@@ -134,10 +136,12 @@ fun parseSyncRecipe(raw: String): SyncRecipe {
         coverPath = json.optString("coverPath", "").takeIf { it.isNotBlank() },
         categoryId = json.optString("categoryId", "").takeIf { it.isNotBlank() },
         tags = json.optString("tags", ""),
-        difficulty = json.optInt("difficulty", 2),
+        // 旧数据里仍有 difficulty / servings，这里直接忽略
         durationMin = json.optInt("durationMin", 0),
-        servings = json.optInt("servings", 2),
         notes = json.optString("notes", ""),
+        // 旧备份没有评价字段，缺失时留空
+        review = json.optString("review", ""),
+        aliases = json.optString("aliases", ""),
         rating = json.optInt("rating", 0),
         cookCount = json.optInt("cookCount", 0),
         createdAt = json.optLong("createdAt", System.currentTimeMillis()),
@@ -174,6 +178,8 @@ fun parseSyncRecipe(raw: String): SyncRecipe {
                     dishId = id,
                     orderIndex = index,
                     text = item.optString("text", ""),
+                    // 旧备份没有这个字段，缺失时按"无小结"处理
+                    summary = item.optString("summary", ""),
                     imagePaths = encodeStringList(images),
                     timerSec = item.optLong("timerSec", 0L).takeIf { it > 0L }?.toInt()
                 )

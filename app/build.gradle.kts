@@ -20,8 +20,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 发布签名。密钥库放在 app/lindachu.jks，已加入 .gitignore，
+    // 换电脑或重装系统前记得备份——丢了就没法给这个 App 出更新了。
+    signingConfigs {
+        create("release") {
+            storeFile = file("lindachu.jks")
+            storePassword = "lindachu2026"
+            keyAlias = "lindachu"
+            keyPassword = "lindachu2026"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             optimization {
                 enable = false
             }

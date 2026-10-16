@@ -3,11 +3,7 @@ package com.lyltc1.lindachu.ui.navigation
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lyltc1.lindachu.di.AppContainer
 import com.lyltc1.lindachu.ui.detail.DetailScreen
@@ -28,17 +24,23 @@ import com.lyltc1.lindachu.ui.menu.MenuListViewModelFactory
 import com.lyltc1.lindachu.ui.order.OrderListScreen
 import com.lyltc1.lindachu.ui.order.OrderListViewModel
 import com.lyltc1.lindachu.ui.order.OrderListViewModelFactory
-import com.lyltc1.lindachu.ui.order.ScanOrderScreen
+import com.lyltc1.lindachu.ui.order.OrderSummaryScreen
+import com.lyltc1.lindachu.ui.order.OrderSummaryViewModel
+import com.lyltc1.lindachu.ui.order.OrderSummaryViewModelFactory
+import com.lyltc1.lindachu.ui.order.PickDishesScreen
+import com.lyltc1.lindachu.ui.order.PickDishesViewModel
+import com.lyltc1.lindachu.ui.order.PickDishesViewModelFactory
 import com.lyltc1.lindachu.ui.settings.SettingsScreen
 import com.lyltc1.lindachu.ui.settings.SettingsViewModel
 import com.lyltc1.lindachu.ui.settings.SettingsViewModelFactory
+import com.lyltc1.lindachu.ui.order.ShoppingListScreen
+import com.lyltc1.lindachu.ui.order.ShoppingListViewModel
+import com.lyltc1.lindachu.ui.order.ShoppingListViewModelFactory
 
 /** 页面容器：按返回栈渲染当前页面，并处理系统返回键 */
 @Composable
 fun AppNav(container: AppContainer, appContext: Context) {
     val navState = remember { NavState() }
-    // 扫码页扫到的订单码，返回订单列表后消费
-    var scannedOrder by remember { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = navState.canPop) {
         navState.pop()
@@ -47,7 +49,12 @@ fun AppNav(container: AppContainer, appContext: Context) {
     when (val screen = navState.current) {
         Screen.Home -> {
             val homeViewModel: HomeViewModel = viewModel(
-                factory = HomeViewModelFactory(container.dishRepository, appContext)
+                factory = HomeViewModelFactory(
+                    repository = container.dishRepository,
+                    syncManager = container.syncManager,
+                    preferences = container.syncPreferences,
+                    appContext = appContext
+                )
             )
             HomeScreen(
                 viewModel = homeViewModel,
@@ -120,13 +127,52 @@ fun AppNav(container: AppContainer, appContext: Context) {
                 factory = MenuDetailViewModelFactory(
                     menuRepository = container.menuRepository,
                     dishRepository = container.dishRepository,
-                    publisher = container.menuPublisher,
                     menuId = screen.menuId
                 )
             )
             MenuDetailScreen(
                 viewModel = menuDetailViewModel,
                 imageStorage = container.imageStorage,
+                onPickDishes = { menuId -> navState.push(Screen.PickDishes(menuId)) },
+                onBack = { navState.pop() }
+            )
+        }
+
+        is Screen.PickDishes -> {
+            val pickViewModel: PickDishesViewModel = viewModel(
+                key = "pick_${screen.menuId}",
+                factory = PickDishesViewModelFactory(container.menuRepository, screen.menuId)
+            )
+            PickDishesScreen(
+                viewModel = pickViewModel,
+                onGenerated = { orderId -> navState.push(Screen.OrderSummary(orderId)) },
+                onBack = { navState.pop() }
+            )
+        }
+
+        is Screen.OrderSummary -> {
+            val summaryViewModel: OrderSummaryViewModel = viewModel(
+                key = "summary_${screen.orderId}",
+                factory = OrderSummaryViewModelFactory(container.menuRepository, screen.orderId)
+            )
+            OrderSummaryScreen(
+                viewModel = summaryViewModel,
+                onShoppingList = { navState.push(Screen.ShoppingList(screen.orderId)) },
+                onBack = { navState.pop() }
+            )
+        }
+
+        is Screen.ShoppingList -> {
+            val shoppingViewModel: ShoppingListViewModel = viewModel(
+                key = "shopping_${screen.orderId}",
+                factory = ShoppingListViewModelFactory(
+                    menuRepository = container.menuRepository,
+                    dishRepository = container.dishRepository,
+                    orderId = screen.orderId
+                )
+            )
+            ShoppingListScreen(
+                viewModel = shoppingViewModel,
                 onBack = { navState.pop() }
             )
         }
@@ -135,25 +181,9 @@ fun AppNav(container: AppContainer, appContext: Context) {
             val orderListViewModel: OrderListViewModel = viewModel(
                 factory = OrderListViewModelFactory(container.menuRepository)
             )
-            LaunchedEffect(Unit) {
-                scannedOrder?.let {
-                    orderListViewModel.receive(it)
-                    scannedOrder = null
-                }
-            }
             OrderListScreen(
                 viewModel = orderListViewModel,
-                onScanClick = { navState.push(Screen.ScanOrder) },
-                onBack = { navState.pop() }
-            )
-        }
-
-        Screen.ScanOrder -> {
-            ScanOrderScreen(
-                onScanned = { text ->
-                    scannedOrder = text
-                    navState.pop()
-                },
+                onOrderClick = { orderId -> navState.push(Screen.OrderSummary(orderId)) },
                 onBack = { navState.pop() }
             )
         }

@@ -38,6 +38,10 @@ class DishRepository(private val db: AppDatabase) {
 
     fun observeCategories(): Flow<List<CategoryEntity>> = categoryDao.observeAll()
 
+    /** 某道菜的食材，买菜清单按份数折算时用 */
+    suspend fun getIngredients(dishId: String): List<IngredientEntity> =
+        ingredientDao.getByDish(dishId)
+
     suspend fun saveDish(
         dish: DishEntity,
         ingredients: List<IngredientEntity>,
@@ -103,21 +107,18 @@ class DishRepository(private val db: AppDatabase) {
         }
     }
 
+    /**
+     * 首次启动时写入内置分类，仅此而已。
+     *
+     * 菜谱一律以 GitHub 仓库为准，App 不再内置任何菜谱——
+     * 否则内置版本会在同步时反过来覆盖用户在远端维护的版本。
+     */
     suspend fun ensureSeeded() {
-        if (categoryDao.count() > 0) return
-        db.withTransaction {
-            categoryDao.upsertAll(com.lyltc1.lindachu.data.local.SeedData.categories())
-            SeedDishes.insertAll(this@DishRepository)
-        }
+        // 内置分类以代码为准：既能补上后来新增的分类，
+        // 也能把改名（家常菜 → 素菜）同步到已经装过的手机上。
+        // 用户自建的分类 id 是 UUID，不在列表里，不会被碰到。
+        categoryDao.upsertAll(com.lyltc1.lindachu.data.local.SeedData.categories())
     }
 
     fun newId(): String = UUID.randomUUID().toString()
-}
-
-private object SeedDishes {
-    suspend fun insertAll(repo: DishRepository) {
-        com.lyltc1.lindachu.data.local.SeedData.dishes().forEach { item ->
-            repo.saveDish(item.dish, item.ingredients, item.steps)
-        }
-    }
 }

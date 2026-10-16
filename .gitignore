@@ -26,6 +26,11 @@ release/
 *.jks
 *.keystore
 
+# JVM crash logs
+*.log
+hs_err_pid*
+replay_pid*
+
 # OS
 .DS_Store
 Thumbs.db

@@ -7,19 +7,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,7 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.lyltc1.lindachu.data.local.entity.DishEntity
-import com.lyltc1.lindachu.util.difficultyLabel
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,7 +69,7 @@ fun HomeScreen(
         },
         topBar = {
             TopAppBar(
-                title = { Text("林大厨") },
+                title = { Text("大厨手记") },
                 actions = {
                     TextButton(onClick = onMenusClick) { Text("菜单") }
                     IconButton(onClick = onSettingsClick) {
@@ -119,11 +122,21 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (uiState.query.isBlank()) "还没有菜谱" else "没有找到相关菜谱",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (uiState.query.isBlank()) {
+                        EmptyGuide(
+                            hasCredentials = uiState.hasCredentials,
+                            isSyncing = uiState.isSyncing,
+                            message = uiState.syncMessage,
+                            onSync = viewModel::sync,
+                            onSettingsClick = onSettingsClick
+                        )
+                    } else {
+                        Text(
+                            text = "没有找到相关菜谱",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 LazyVerticalGrid(
@@ -188,11 +201,75 @@ private fun DishCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${dish.durationMin} 分钟 · ${difficultyLabel(dish.difficulty)}",
+                    text = if (dish.durationMin > 0) "${dish.durationMin} 分钟" else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+/**
+ * 首页空状态引导。
+ *
+ * 内置示例菜谱移除后，新装设备上本地是空的，菜谱只在 GitHub 仓库里，
+ * 所以空状态直接给出同步入口，不用用户自己去设置页翻。
+ * 凭据没填时按钮改为跳转设置页，避免出现点了没反应的情况。
+ */
+@Composable
+private fun EmptyGuide(
+    hasCredentials: Boolean,
+    isSyncing: Boolean,
+    message: String?,
+    onSync: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = "还没有菜谱", style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = if (hasCredentials) {
+                "菜谱都存在 GitHub 仓库里，同步一下就有了"
+            } else {
+                "菜谱都存在 GitHub 仓库里，先去设置里填令牌再同步"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        if (hasCredentials) {
+            Button(onClick = onSync, enabled = !isSyncing) {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isSyncing) "正在同步…" else "立即同步")
+            }
+        } else {
+            Button(onClick = onSettingsClick) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("去设置 GitHub 令牌")
+            }
+        }
+        message?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

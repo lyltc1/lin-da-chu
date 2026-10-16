@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>林大厨菜单</title>
+<title>大厨手记菜单</title>
 <style>
 :root{--primary:#FF7043;--bg:#FFF8F3;--card:#fff;--text:#2B2320;--muted:#8A7A72;--line:#F0E2D8}
 *{box-sizing:border-box}
@@ -52,7 +52,7 @@ width:100%;font-size:15px}
 </head>
 <body>
 <header>
-  <h1 id="title">林大厨菜单</h1>
+  <h1 id="title">大厨手记菜单</h1>
   <p id="greeting"></p>
 </header>
 <p class="hint">点菜名即可加减，最多 9 份</p>
@@ -91,9 +91,9 @@ var codeEl = document.getElementById('code');
 var copyEl = document.getElementById('copy');
 var listEl = document.getElementById('list');
 
-document.getElementById('title').textContent = MENU.title || '林大厨菜单';
+document.getElementById('title').textContent = MENU.title || '大厨手记菜单';
 document.getElementById('greeting').textContent = MENU.greeting || '';
-document.title = MENU.title || '林大厨菜单';
+document.title = MENU.title || '大厨手记菜单';
 
 function esc(s) {
   return String(s == null ? '' : s)

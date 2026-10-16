@@ -1,84 +1,38 @@
 package com.lyltc1.lindachu.data.local
 
 import com.lyltc1.lindachu.data.local.entity.CategoryEntity
-import com.lyltc1.lindachu.data.local.entity.DishEntity
-import com.lyltc1.lindachu.data.local.entity.DishWithDetails
-import com.lyltc1.lindachu.data.local.entity.IngredientEntity
-import com.lyltc1.lindachu.data.local.entity.StepEntity
 
-/** 首次安装的示例数据，便于立刻看到界面效果与使用方式 */
+/**
+ * 内置数据：只保留分类，不再内置任何菜谱。
+ *
+ * 菜谱统一以 GitHub 仓库为唯一来源，App 里不再塞示例菜谱——
+ * 否则内置版本会在同步时按 updatedAt 反过来覆盖用户在远端维护的版本。
+ *
+ * 分类仍然内置：同步只传输菜谱，不传输分类表，
+ * 新设备拉回菜谱后需要有分类数据才能归类显示。
+ *
+ * 分类 id 用 c- 前缀，与用户自建条目（UUID）区分。
+ */
 object SeedData {
 
+    /** 示例分类 id 前缀 */
+    const val CATEGORY_PREFIX = "c-"
+
+    /** 云端菜谱 id 前缀，沿用早年示例数据的命名 */
+    const val DISH_PREFIX = "d-"
+
+    /**
+     * id 一旦定下就不要再改——菜谱里存的是 id，
+     * 改了的话菜就找不到分类，会掉进「其他」。
+     *
+     * 所以要改的是显示名：「家常菜」改成「素菜」，id 仍是 c-home。
+     * 后面加菜按类别选就行，肉菜和海鲜现在还是空的。
+     */
     fun categories(): List<CategoryEntity> = listOf(
-        CategoryEntity(id = "c-home", name = "家常菜", sortOrder = 0, colorHex = "#FF7043"),
-        CategoryEntity(id = "c-soup", name = "汤羹", sortOrder = 1, colorHex = "#4CAF50"),
-        CategoryEntity(id = "c-bake", name = "烘焙", sortOrder = 2, colorHex = "#FFB300"),
-        CategoryEntity(id = "c-drink", name = "饮品", sortOrder = 3, colorHex = "#29B6F6")
+        CategoryEntity(id = "c-home", name = "素菜", sortOrder = 0, colorHex = "#43A047"),
+        CategoryEntity(id = "c-meat", name = "肉菜", sortOrder = 1, colorHex = "#E5533D"),
+        CategoryEntity(id = "c-seafood", name = "海鲜", sortOrder = 2, colorHex = "#039BE5"),
+        CategoryEntity(id = "c-soup", name = "汤", sortOrder = 3, colorHex = "#29B6F6"),
+        CategoryEntity(id = "c-rice", name = "主食", sortOrder = 4, colorHex = "#F9A825")
     )
-
-    fun dishes(): List<DishWithDetails> {
-        val now = System.currentTimeMillis()
-
-        val tomatoEgg = DishWithDetails(
-            dish = DishEntity(
-                id = "d-tomato-egg",
-                title = "番茄炒蛋",
-                categoryId = "c-home",
-                tags = "快手,家常,下饭",
-                difficulty = 1,
-                durationMin = 10,
-                servings = 2,
-                notes = "番茄去皮口感更细腻，糖用来提鲜不是增甜。",
-                rating = 5,
-                cookCount = 12,
-                createdAt = now,
-                updatedAt = now
-            ),
-            ingredients = listOf(
-                IngredientEntity("i-1", "d-tomato-egg", "番茄", "2", "个", "主料", 0),
-                IngredientEntity("i-2", "d-tomato-egg", "鸡蛋", "3", "个", "主料", 1),
-                IngredientEntity("i-3", "d-tomato-egg", "小葱", "1", "根", "辅料", 2),
-                IngredientEntity("i-4", "d-tomato-egg", "盐", "2", "克", "调料", 3),
-                IngredientEntity("i-5", "d-tomato-egg", "糖", "3", "克", "调料", 4)
-            ),
-            steps = listOf(
-                StepEntity("s-1", "d-tomato-egg", 0, "番茄顶部划十字，热水烫 30 秒后去皮，切滚刀块。"),
-                StepEntity("s-2", "d-tomato-egg", 1, "鸡蛋加少许盐打散，热油下锅炒至凝固后盛出。"),
-                StepEntity("s-3", "d-tomato-egg", 2, "底油下番茄块，中火炒 3 分钟出汁，加糖和盐。", timerSec = 180),
-                StepEntity("s-4", "d-tomato-egg", 3, "倒回鸡蛋翻炒均匀，撒葱花出锅。")
-            )
-        )
-
-        val colaWings = DishWithDetails(
-            dish = DishEntity(
-                id = "d-cola-wings",
-                title = "可乐鸡翅",
-                categoryId = "c-home",
-                tags = "宴客,小孩爱吃",
-                difficulty = 2,
-                durationMin = 30,
-                servings = 3,
-                notes = "收汁时要守着锅，糖分高容易糊。",
-                rating = 4,
-                cookCount = 5,
-                createdAt = now,
-                updatedAt = now
-            ),
-            ingredients = listOf(
-                IngredientEntity("i-6", "d-cola-wings", "鸡中翅", "10", "个", "主料", 0),
-                IngredientEntity("i-7", "d-cola-wings", "可乐", "330", "毫升", "主料", 1),
-                IngredientEntity("i-8", "d-cola-wings", "姜", "3", "片", "辅料", 2),
-                IngredientEntity("i-9", "d-cola-wings", "生抽", "15", "毫升", "调料", 3),
-                IngredientEntity("i-10", "d-cola-wings", "料酒", "10", "毫升", "调料", 4)
-            ),
-            steps = listOf(
-                StepEntity("s-5", "d-cola-wings", 0, "鸡翅两面划刀，冷水下锅加姜片料酒焯水，捞出冲净。"),
-                StepEntity("s-6", "d-cola-wings", 1, "锅中少油，鸡翅煎至两面金黄。"),
-                StepEntity("s-7", "d-cola-wings", 2, "倒入可乐没过鸡翅，加生抽，大火烧开转中小火炖 15 分钟。", timerSec = 900),
-                StepEntity("s-8", "d-cola-wings", 3, "开盖大火收汁，不停翻动至汤汁浓稠裹住鸡翅。")
-            )
-        )
-
-        return listOf(tomatoEgg, colaWings)
-    }
 }

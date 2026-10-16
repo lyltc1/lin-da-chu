@@ -14,6 +14,8 @@ data class StepEntity(
     val dishId: String,
     val orderIndex: Int,
     val text: String,
+    /** 步骤小结，如 "择菜""热油"，用作一眼扫读的小标题；为空则只展示正文 */
+    val summary: String = "",
     val imagePaths: String = "[]",
     /** 该步骤建议计时秒数，为空表示不需计时 */
     val timerSec: Int? = null

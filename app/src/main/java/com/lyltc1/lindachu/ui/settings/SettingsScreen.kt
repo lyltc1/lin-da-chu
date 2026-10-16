@@ -81,6 +81,24 @@ fun SettingsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (uiState.message != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = uiState.message!!,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+
             item {
                 RepositorySection(
                     owner = uiState.owner,
@@ -109,6 +127,8 @@ fun SettingsScreen(
                     onImport = { importLauncher.launch(arrayOf("application/zip")) }
                 )
             }
+
+
         }
     }
 }

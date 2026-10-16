@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.lyltc1.lindachu.data.local.entity.DishEntity
-import com.lyltc1.lindachu.data.menu.MenuPublisher
 import com.lyltc1.lindachu.data.repository.DishRepository
 import com.lyltc1.lindachu.data.repository.MenuRepository
 import com.lyltc1.lindachu.util.parseStringList
@@ -20,42 +19,37 @@ import kotlinx.coroutines.launch
 data class MenuDraft(
     val title: String = "",
     val greeting: String = "",
-    /** 选中的菜谱 ID，顺序即菜单展示顺序，订单码按序号引用菜品 */
+    /** 选中的菜谱 ID，顺序即点菜页里的展示顺序 */
     val selected: List<String> = emptyList()
 )
 
-sealed interface PublishState {
-    data object Idle : PublishState
-    data object Publishing : PublishState
-    data class Done(val url: String) : PublishState
-    data class Failed(val message: String) : PublishState
-}
-
 class MenuDetailViewModel(
     private val menuRepository: MenuRepository,
-    private val dishRepository: DishRepository,
-    private val publisher: MenuPublisher,
+    dishRepository: DishRepository,
     menuId: String?
 ) : ViewModel() {
 
     private val _draft = MutableStateFlow(MenuDraft())
     val draft: StateFlow<MenuDraft> = _draft.asStateFlow()
 
-    private val _publishState = MutableStateFlow<PublishState>(PublishState.Idle)
-    val publishState: StateFlow<PublishState> = _publishState.asStateFlow()
+    /** 已落库的菜单 id；新建时为空，保存后才有值 */
+    private val _savedId = MutableStateFlow<String?>(menuId)
+    val savedId: StateFlow<String?> = _savedId.asStateFlow()
+
+    /** 保存成功后要跳去点菜，用一次性事件把菜单 id 交给页面 */
+    private val _savedMenuId = MutableStateFlow<String?>(null)
+    val savedMenuId: StateFlow<String?> = _savedMenuId.asStateFlow()
 
     val dishes: StateFlow<List<DishEntity>> = dishRepository.observeDishes()
         .map { list -> list.filter { it.deletedAt == null } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    private var savedId: String? = menuId
 
     init {
         val id = menuId
         if (id != null) {
             viewModelScope.launch {
                 val menu = menuRepository.getMenu(id) ?: return@launch
-                savedId = menu.id
+                _savedId.value = menu.id
                 _draft.update { current ->
                     current.copy(
                         title = menu.title,
@@ -82,37 +76,35 @@ class MenuDetailViewModel(
     }
 
     /**
-     * 保存并发布。
+     * 保存菜单，并通知页面跳到点菜页。
      *
-     * 先落库再推送：订单码只带 menuId 和菜品序号，接单端必须能在本机查到
-     * 这份菜单才能还原菜名，所以"先本地、后远端"是硬顺序。
+     * 点菜页要按这份菜单出菜，所以必须先落库拿到 id，
+     * 已经保存过的菜单直接复用原 id 跳转。
      */
-    fun publish() {
+    fun saveAndPick() {
         viewModelScope.launch {
-            _publishState.value = PublishState.Publishing
             val draft = _draft.value
-            val id = menuRepository.saveMenu(draft.title, draft.greeting, draft.selected, savedId)
-            savedId = id
-            val menu = menuRepository.getMenu(id) ?: run {
-                _publishState.value = PublishState.Failed("菜单保存失败")
-                return@launch
-            }
-            _publishState.value = publisher.publish(menu).fold(
-                onSuccess = { PublishState.Done(it) },
-                onFailure = { PublishState.Failed(it.message ?: "发布失败") }
+            val id = menuRepository.saveMenu(
+                draft.title,
+                draft.greeting,
+                draft.selected,
+                _savedId.value
             )
+            _savedId.value = id
+            _savedMenuId.value = id
         }
     }
+
+    fun consumeSavedMenuId() = _savedMenuId.update { null }
 }
 
 class MenuDetailViewModelFactory(
     private val menuRepository: MenuRepository,
     private val dishRepository: DishRepository,
-    private val publisher: MenuPublisher,
     private val menuId: String?
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return MenuDetailViewModel(menuRepository, dishRepository, publisher, menuId) as T
+        return MenuDetailViewModel(menuRepository, dishRepository, menuId) as T
     }
 }

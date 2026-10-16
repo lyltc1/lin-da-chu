@@ -16,7 +16,8 @@ private val Context.syncDataStore: DataStore<Preferences> by preferencesDataStor
 /**
  * 同步相关偏好：GitHub 令牌、数据仓库坐标、上次同步时间。
  *
- * 令牌仅存于本机 DataStore，不随备份 zip 导出，避免换机时泄露。
+ * 令牌只存在本机 DataStore，不随备份 zip 导出，避免换机时泄露；
+ * 没填就是空，同步时会提示去设置页填——不内置任何令牌。
  */
 class SyncPreferences(private val context: Context) {
 
@@ -27,7 +28,9 @@ class SyncPreferences(private val context: Context) {
         val LAST_SYNC_AT = longPreferencesKey("last_sync_at")
     }
 
-    suspend fun getToken(): String = context.syncDataStore.data.first()[Keys.TOKEN].orEmpty()
+    /** 用户在设置里填过的令牌；没填返回空串，由调用方提示去设置页填写 */
+    suspend fun getToken(): String =
+        context.syncDataStore.data.first()[Keys.TOKEN]?.takeIf { it.isNotBlank() } ?: BUILT_IN_TOKEN
 
     suspend fun setToken(value: String) {
         context.syncDataStore.edit { it[Keys.TOKEN] = value.trim() }
@@ -59,5 +62,16 @@ class SyncPreferences(private val context: Context) {
     companion object {
         const val DEFAULT_OWNER = "lyltc1"
         const val DEFAULT_REPO = "lin-da-chu-data"
+
+        /**
+         * 这里曾经内置过一枚令牌，好让新设备开箱就能同步。
+         *
+         * 留空的原因：写在源码里就等于编译进 APK——安装包发出去，
+         * 拿到的人反编译就能取出；源码推到公开仓库时，
+         * GitHub 的密钥扫描还会当场把它吊销。
+         *
+         * 现在令牌一律在「设置与同步」页填写，只存在本机 DataStore。
+         */
+        private const val BUILT_IN_TOKEN = ""
     }
 }

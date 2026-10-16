@@ -1,9 +1,11 @@
 package com.lyltc1.lindachu.ui.detail
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,9 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,16 +44,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.lyltc1.lindachu.data.local.entity.IngredientEntity
 import com.lyltc1.lindachu.data.local.entity.StepEntity
-import com.lyltc1.lindachu.util.difficultyLabel
-import com.lyltc1.lindachu.util.formatDuration
 import com.lyltc1.lindachu.util.parseStringList
-import kotlinx.coroutines.delay
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -164,9 +170,6 @@ private fun DishDetailContent(
                     text = buildList {
                         uiState.categoryName?.let { add(it) }
                         if (dish.durationMin > 0) add("${dish.durationMin} 分钟")
-                        add("难度 ${difficultyLabel(dish.difficulty)}")
-                        if (dish.servings > 0) add("${dish.servings} 人份")
-                        add("做过 ${dish.cookCount} 次")
                     }.joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -178,25 +181,19 @@ private fun DishDetailContent(
             item { SectionTitle("食材") }
             groupedIngredients.forEach { (group, items) ->
                 item {
-                    Text(
-                        text = group,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                items(items, key = { it.id }) { ingredient ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(ingredient.name, style = MaterialTheme.typography.bodyLarge)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = listOf(ingredient.amount, ingredient.unit)
-                                .filter { it.isNotBlank() }
-                                .joinToString(" "),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = group,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
                         )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items.forEach { ingredient -> IngredientChip(ingredient) }
+                        }
                     }
                 }
             }
@@ -206,6 +203,15 @@ private fun DishDetailContent(
             item { SectionTitle("做法") }
             items(uiState.steps, key = { it.id }) { step ->
                 StepItem(step = step, resolveImage = resolveImage)
+            }
+        }
+
+        if (dish.review.isNotBlank()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionTitle("评价")
+                    Text(dish.review, style = MaterialTheme.typography.bodyLarge)
+                }
             }
         }
 
@@ -257,9 +263,22 @@ private fun StepItem(
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = step.text,
-                    style = MaterialTheme.typography.bodyLarge,
+                    // 有小结时它当标题，正文另起一行；没有小结就让正文直接顶上
+                    text = step.summary.ifBlank { step.text },
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (step.summary.isNotBlank() && step.text.isNotBlank()) {
+                val highlightColor = MaterialTheme.colorScheme.primary
+                val body = remember(step.text, highlightColor) {
+                    highlightAmounts(step.text, highlightColor)
+                }
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(start = 36.dp)
                 )
             }
 
@@ -274,49 +293,57 @@ private fun StepItem(
                 )
             }
 
-            val timerSeconds = step.timerSec
-            if (timerSeconds != null && timerSeconds > 0) {
-                StepTimer(seconds = timerSeconds)
             }
-        }
+            }
+            }
+
+/**
+ * 把步骤正文里「【食用油 15毫升】」这类用量标注渲染成强调样式。
+ *
+ * 数据层面它就是普通文本，不渲染也照样读得通；渲染后则能一眼扫到用量，
+ * 免得在长句里漏看「该放多少」。
+ */
+private fun highlightAmounts(text: String, color: Color): AnnotatedString = buildAnnotatedString {
+    val pattern = Regex("【[^】]*】")
+    var cursor = 0
+    pattern.findAll(text).forEach { match ->
+        append(text.substring(cursor, match.range.first))
+        pushStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold))
+        append(match.value)
+        pop()
+        cursor = match.range.last + 1
     }
+    if (cursor < text.length) append(text.substring(cursor))
 }
 
+/** 单个食材小框：名称 + 用量，比列表行更紧凑，扫读也更快 */
 @Composable
-private fun StepTimer(seconds: Int) {
-    var remaining by remember(seconds) { mutableIntStateOf(seconds) }
-    var running by remember(seconds) { mutableStateOf(false) }
-
-    LaunchedEffect(seconds, running) {
-        while (running && remaining > 0) {
-            delay(1_000)
-            remaining--
-        }
-        if (remaining <= 0) running = false
+private fun IngredientChip(ingredient: IngredientEntity) {
+    val amountText = remember(ingredient) {
+        listOf(ingredient.amount, ingredient.unit)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
     }
-
-    AssistChip(
-        onClick = {
-            if (remaining <= 0) {
-                remaining = seconds
-                running = true
-            } else {
-                running = !running
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+            Text(ingredient.name, style = MaterialTheme.typography.bodyMedium)
+            if (amountText.isNotBlank()) {
+                Text(
+                    text = amountText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
-        },
-        label = {
-            Text(
-                text = when {
-                    remaining <= 0 -> "重新计时 ${formatDuration(seconds)}"
-                    running -> "暂停 ${formatDuration(remaining)}"
-                    else -> "开始 ${formatDuration(remaining)}"
-                }
-            )
-        },
-        leadingIcon = {
-            Icon(Icons.Default.PlayArrow, contentDescription = null)
         }
-    )
+    }
 }
 
 @Composable

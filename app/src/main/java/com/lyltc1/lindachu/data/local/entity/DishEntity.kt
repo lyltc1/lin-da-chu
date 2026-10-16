@@ -22,11 +22,12 @@ data class DishEntity(
     val categoryId: String? = null,
     /** 逗号分隔的标签，如 "快手,家常" */
     val tags: String = "",
-    /** 难度 1–5 */
-    val difficulty: Int = 2,
+    /** 逗号分隔的别名，如 "手撕包菜,炒包菜"；只参与搜索，界面不展示 */
+    val aliases: String = "",
     val durationMin: Int = 0,
-    val servings: Int = 2,
     val notes: String = "",
+    /** 对这道菜的整体评价，如 "简单清爽，色泽翠绿" */
+    val review: String = "",
     /** 评分 0–5，0 表示未评分 */
     val rating: Int = 0,
     val cookCount: Int = 0,
